@@ -14,21 +14,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-@Service 
+@Service
 public class LogViewService {
 
   private static final Logger logger = LoggerFactory.getLogger(LogViewService.class);
 
-  /* This method uses a BufferedReader for improved performance.
-  *  It the flips the order using stack.
-  *  This is more performant than the other methods I tried.
-  *  I tried using a RandomFileAccess, but did not get enough time to add buffer,
-  *  which means it will be very slow for large file.
-  */ 
+  /*
+   * This method uses a BufferedReader for improved performance. It the flips the order using stack.
+   * This is more performant than the other methods I tried. I tried using a RandomFileAccess, but
+   * did not get enough time to add buffer, which means it will be very slow for large file.
+   */
   public List<String> getLogsNatively(String path) throws IOException {
     Stack<String> logs = new Stack<String>();
-    try (FileReader reader = new FileReader(path); 
-        BufferedReader br = new BufferedReader(reader)) {
+    try (FileReader reader = new FileReader(path); BufferedReader br = new BufferedReader(reader)) {
 
       // read line by line
       String line;
@@ -43,7 +41,7 @@ public class LogViewService {
       throw e;
     }
 
-    Collections.reverse (logs);
+    Collections.reverse(logs);
     return logs;
   }
 
@@ -52,7 +50,7 @@ public class LogViewService {
    * 
    * @param file
    * @return the logs as a list
-   * @throws IOException 
+   * @throws IOException
    */
   // Uses apache commons library
   public List<String> getLogs(File file) throws IOException {
@@ -66,13 +64,31 @@ public class LogViewService {
       }
     } catch (IOException e) {
       // Send to NR or other monitoring application as well here
-      logger.error("Hit an exception {}, while reading the log file {}",
-          e.getMessage(), file.getAbsolutePath());
+      logger.error("Hit an exception {}, while reading the log file {}", 
+          e.getMessage(),
+          file.getAbsolutePath());
       // TODO: create LogViewException
       throw e;
     }
 
     return logs;
   }
+
+  // Assumption is we will only run this for Linux systems as stated in the problem description
+//  public List<String> getLogs(File file, String searchTerm) throws IOException {
+//    ProcessBuilder builder =
+//        new ProcessBuilder("cmd.exe", "/c", "findstr " + SEARCH_TOKEN + " c:\\temp\\big.txt");
+//    builder.redirectErrorStream(true);
+//    Process p = builder.start();
+//    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+//    String line;
+//    while (true) {
+//      line = r.readLine();
+//      if (line == null) {
+//        break;
+//      }
+//      found.add(line);
+//    }
+//  }
 
 }

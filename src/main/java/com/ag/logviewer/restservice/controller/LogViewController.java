@@ -2,12 +2,15 @@ package com.ag.logviewer.restservice.controller;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.net.FileNameMap;
+import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,61 +30,62 @@ public class LogViewController {
   @GetMapping("/log")
   public List<String> greetings(@RequestParam(required = false, value = "file") String fileName) {
     List<String> logs = new ArrayList<>();
-    logs.add("Welcome to log view");
-    logs.add("Lets get started");
+    logs.add("Welcome to log view.");
+    logs.add("Please specify a file name in /var/logs to view the file.");
     return logs;
   }
 
   @GetMapping("/logs")
-  public List<String> viewLogs(@RequestParam(value = "file") String fileName)
+  public ResponseEntity<List<String>> viewLogs(@RequestParam(value = "file") String fileName)
       throws IOException {
     String path = "/var/log/" + fileName;
     logger.info("Request received to view logs for the file {}.", path); 
     
     // Validity checks
     File file = new File(path);
-    boolean validRequest = isValidRequest(file);
-    if (!validRequest) {
-      // return httpstatus error
+    String errorMessage = isValidRequest(file);
+    // Should be a custom error class in the future
+    if (errorMessage != null) {
+      logger.error(errorMessage);
+      return ResponseEntity.badRequest().body(Arrays.asList(errorMessage));
     }
        
-    
     logger.info("All validations passed. Starting to fetch logs from file {}.", fileName);
-    return logViewService.getLogs(file);
+    List<String> logs = logViewService.getLogs(file);
+    return ResponseEntity.ok().body(logs);
   }
 
-  private boolean isValidRequest(File file) throws IOException {
-    // Is it a valid file
-    // Is is binary
-    // Is it directory
-    boolean validRequest = true;
+  private String isValidRequest(File file) throws IOException {
+    String errorMessage = null;
     // Logging the errors for now. Not throwing an exception.
-    // Can be added if needed for NR metrics.
+    // Can be added if needed for NR metrics depending on reporting needs.
     if (!file.exists()) {
-      validRequest = false;
-      logger.error("The requested log file {} does not exist.", file.getAbsolutePath());
-    } else if (!file.isDirectory()) {
-      validRequest = false;
-      logger.error("The requested log file {} is a directory.", file.getAbsolutePath());
+      errorMessage = "The requested log file " + file.getAbsolutePath() + " does not exist.";
+    } else if (file.isDirectory()) {
+      errorMessage = "The requested log file " + file.getAbsolutePath() + " is a directory.";
     } else if (isBinaryFile(file)) {
-      validRequest = false;
-      logger.error("The requested log file {} is not a text file.", file.getAbsolutePath());
+      errorMessage = "The requested log file " + file.getAbsolutePath() + " is not a text file.";
     }
     
-    return validRequest;
+    return errorMessage;
     
   }
 
-  // A somewhat simplistic way of finding the mime type based on extenstions alone
-  // Probably can be refined to check the file contents as well
+  // A somewhat simplistic way of checking if its a log file, based on extension alone
+  // Will do for now, but this really just a hack
   private boolean isBinaryFile(File file) throws IOException {
-    String type = Files.probeContentType(file.toPath());
-    if (type.startsWith("text")) {
-        return false;
+    FileNameMap fileNameMap = URLConnection.getFileNameMap();
+    String fileName = file.getName();
+    String mimeType = fileNameMap.getContentTypeFor(fileName);
+    if ((mimeType == null && isLogFile(fileName)) || mimeType .startsWith("text")) {
+      return false;
     }
 
-    // type couldn't be determined or is binary
     return true;
+  }
+  
+  private boolean isLogFile(String fileName) {
+    return (fileName.endsWith("out") || fileName.endsWith("log"));
   }
 
 }
