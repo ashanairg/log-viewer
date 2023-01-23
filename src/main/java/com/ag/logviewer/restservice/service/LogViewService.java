@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,7 +27,8 @@ public class LogViewService {
    */
   public List<String> getLogsNatively(String path) throws IOException {
     Stack<String> logs = new Stack<String>();
-    try (FileReader reader = new FileReader(path); BufferedReader br = new BufferedReader(reader)) {
+    try (FileReader reader = new FileReader(path); 
+        BufferedReader br = new BufferedReader(reader)) {
 
       // read line by line
       String line;
@@ -75,20 +77,32 @@ public class LogViewService {
   }
 
   // Assumption is we will only run this for Linux systems as stated in the problem description
-//  public List<String> getLogs(File file, String searchTerm) throws IOException {
-//    ProcessBuilder builder =
-//        new ProcessBuilder("cmd.exe", "/c", "findstr " + SEARCH_TOKEN + " c:\\temp\\big.txt");
-//    builder.redirectErrorStream(true);
-//    Process p = builder.start();
-//    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-//    String line;
-//    while (true) {
-//      line = r.readLine();
-//      if (line == null) {
-//        break;
-//      }
-//      found.add(line);
-//    }
-//  }
+  public List<String> getLogs(File file, String searchToken, String lastN) throws IOException {
+    List<String> logs = new ArrayList<>();
+    
+    // TODO; this should either be page length or n result
+    int lastNLines = Integer.MAX_VALUE;
+    if (lastN != null) {
+      lastNLines = Integer.parseInt(lastN);
+    }
+    ProcessBuilder builder = new ProcessBuilder("grep", "-rni", searchToken, file.getAbsolutePath());
+
+    builder.redirectErrorStream(true);
+    Process p = builder.start();
+    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+    String line;
+    //while (true) {
+    while (lastNLines > 0) {
+      line = r.readLine();
+      if (line == null) {
+        break;
+      }
+
+      logs.add(line);
+      lastNLines--;
+    }
+    
+    return logs;
+  }
 
 }

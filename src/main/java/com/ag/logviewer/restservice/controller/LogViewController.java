@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ag.logviewer.restservice.service.LogViewService;
@@ -43,7 +44,7 @@ public class LogViewController {
     
     // Validity checks
     File file = new File(path);
-    String errorMessage = isValidRequest(file);
+    String errorMessage = isValidLogRequest(file);
     // Should be a custom error class in the future
     if (errorMessage != null) {
       logger.error(errorMessage);
@@ -55,7 +56,43 @@ public class LogViewController {
     return ResponseEntity.ok().body(logs);
   }
 
-  private String isValidRequest(File file) throws IOException {
+  @GetMapping("/logs/{file}/search")
+  public ResponseEntity<List<String>> searchLogs(
+      @PathVariable("file") String fileName,
+      @RequestParam("q") String queryString,
+      @RequestParam(required = false, value = "last") String lastN)
+      throws IOException {
+    String path = "/var/log/" + fileName; 
+    
+    // Validity checks
+    File file = new File(path);
+    String errorMessage = isValidSearchRequest(file, lastN);
+    // Should be a custom error class in the future
+    if (errorMessage != null) {
+      logger.error(errorMessage);
+      return ResponseEntity.badRequest().body(Arrays.asList(errorMessage));
+    }
+       
+    logger.info("All validations passed. Starting to fetch logs from file {}.", fileName);
+    List<String> logs = logViewService.getLogs(file, queryString, lastN);
+
+    return ResponseEntity.ok().body(logs);
+  }
+ 
+  private String isValidSearchRequest(File file, String lastN) throws IOException {
+    String errorMessage = isValidLogRequest(file);
+    if (errorMessage != null && lastN != null) {
+      try {
+        Integer.parseInt(lastN);
+      } catch (NumberFormatException e) {
+        errorMessage = "The number specified to retrieve the last n records " + lastN + " is not valid.";
+      }
+    }
+    
+    return errorMessage;
+  }
+
+  private String isValidLogRequest(File file) throws IOException {
     String errorMessage = null;
     // Logging the errors for now. Not throwing an exception.
     // Can be added if needed for NR metrics depending on reporting needs.
