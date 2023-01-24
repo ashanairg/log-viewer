@@ -37,7 +37,10 @@ public class LogViewController {
   }
 
   @GetMapping("/logs")
-  public ResponseEntity<List<String>> viewLogs(@RequestParam(value = "file") String fileName)
+  public ResponseEntity<List<String>> viewLogs(
+      @RequestParam("page") int page, 
+      @RequestParam("size") int size,
+      @RequestParam("file") String fileName)
       throws IOException {
     String path = "/var/log/" + fileName;
     logger.info("Request received to view logs for the file {}.", path); 
@@ -52,7 +55,7 @@ public class LogViewController {
     }
        
     logger.info("All validations passed. Starting to fetch logs from file {}.", fileName);
-    List<String> logs = logViewService.getLogs(file);
+    List<String> logs = logViewService.getLogsInReverse(file, page, size);
     return ResponseEntity.ok().body(logs);
   }
 
@@ -92,6 +95,7 @@ public class LogViewController {
     return errorMessage;
   }
 
+  // Eventually there will be a UI, so not checking page and size values for validity
   private String isValidLogRequest(File file) throws IOException {
     String errorMessage = null;
     // Logging the errors for now. Not throwing an exception.
