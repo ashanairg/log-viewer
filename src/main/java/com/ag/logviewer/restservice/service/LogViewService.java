@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Stack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -95,41 +95,45 @@ public class LogViewService {
   
 
   // Assumption is we will only run this for Linux systems as stated in the problem description
+  // Log filtering based on dates is not possible at this time.
+  // For that to happen, logs need to be parsed, normalized and saved, where it can be queried based on the dates.
   /**
    * Method to return log lines with the specified search token.
    *
    * @param file, the file wherein to search
    * @param searchToken
-   * @param lastN
-   * @return
+   * @param size
+   * @return logs with matching token
    * @throws IOException
    */
-  public List<String> getLogs(File file, String searchToken, String lastN) throws IOException {
-    Stack<String> logs = new Stack<>();
+  public List<String> getLogs(File file, String searchToken, String size) throws IOException {
+    List<String> logs = new ArrayList<>();
     
     // TODO: this should either be page length or n result once pagination is implemented in search.
     // Otherwise, performance will suffer.
-    int lastNLines = 50;
-    if (lastN != null) {
-      lastNLines = Integer.parseInt(lastN);
+    int numberOfLines = Integer.MIN_VALUE;
+    if (size != null) {
+      numberOfLines = Integer.parseInt(size);
     }
     ProcessBuilder builder = new ProcessBuilder("grep", "-rni", searchToken, file.getAbsolutePath());
 
     builder.redirectErrorStream(true);
     Process p = builder.start();
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-    String line;
-    //while (true) {
-    while (lastNLines > 0) {
+    String line = null;
+    
+    // If the number of lines are not specified, keep reading till we run out of results
+    while (numberOfLines != Integer.MIN_VALUE ? numberOfLines > 0 : true) {
       line = r.readLine();
       if (line == null) {
         break;
       }
 
       logs.add(line);
-      lastNLines--;
+      numberOfLines--;
     }
     
+    Collections.reverse(logs);
     return logs;
   }
 

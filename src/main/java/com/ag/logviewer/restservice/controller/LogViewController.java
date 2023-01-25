@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.FileNameMap;
 import java.net.URLConnection;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
@@ -13,34 +12,28 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ag.logviewer.restservice.service.LogViewService;
 
 @RestController
+@RequestMapping("/logs")
 public class LogViewController {
   private static final Logger logger = LoggerFactory.getLogger(LogViewController.class);
-  
+
   private final LogViewService logViewService;
   
   @Autowired
   public LogViewController(LogViewService logViewService) {
     this.logViewService = logViewService;
   }
- 
-  @GetMapping("/log")
-  public List<String> greetings(@RequestParam(required = false, value = "file") String fileName) {
-    List<String> logs = new ArrayList<>();
-    logs.add("Welcome to log view.");
-    logs.add("Please specify a file name in /var/logs to view the file.");
-    return logs;
-  }
 
-  @GetMapping("/logs")
+  @GetMapping("/{file}")
   public ResponseEntity<List<String>> viewLogs(
+      @PathVariable("file") String fileName,
       @RequestParam("page") int page, 
-      @RequestParam("size") int size,
-      @RequestParam("file") String fileName)
+      @RequestParam("size") int size)
       throws IOException {
     String path = "/var/log/" + fileName;
     logger.info("Request received to view logs for the file {}.", path); 
@@ -59,17 +52,17 @@ public class LogViewController {
     return ResponseEntity.ok().body(logs);
   }
 
-  @GetMapping("/logs/{file}/search")
+  @GetMapping("/{file}/search")
   public ResponseEntity<List<String>> searchLogs(
       @PathVariable("file") String fileName,
       @RequestParam("q") String queryString,
-      @RequestParam(required = false, value = "last") String lastN)
+      @RequestParam(required = false, value = "size") String size)
       throws IOException {
     String path = "/var/log/" + fileName; 
     
     // Validity checks
     File file = new File(path);
-    String errorMessage = isValidSearchRequest(file, lastN);
+    String errorMessage = isValidSearchRequest(file, size);
     // Should be a custom error class in the future
     if (errorMessage != null) {
       logger.error(errorMessage);
@@ -77,18 +70,18 @@ public class LogViewController {
     }
        
     logger.info("All validations passed. Starting to fetch logs from file {}.", fileName);
-    List<String> logs = logViewService.getLogs(file, queryString, lastN);
+    List<String> logs = logViewService.getLogs(file, queryString, size);
 
     return ResponseEntity.ok().body(logs);
   }
  
-  private String isValidSearchRequest(File file, String lastN) throws IOException {
+  private String isValidSearchRequest(File file, String size) throws IOException {
     String errorMessage = isValidLogRequest(file);
-    if (errorMessage != null && lastN != null) {
+    if (errorMessage != null && size != null) {
       try {
-        Integer.parseInt(lastN);
+        Integer.parseInt(size);
       } catch (NumberFormatException e) {
-        errorMessage = "The number specified to retrieve the last n records " + lastN + " is not valid.";
+        errorMessage = "The number specified to retrieve the last n records " + size + " is not valid.";
       }
     }
     
