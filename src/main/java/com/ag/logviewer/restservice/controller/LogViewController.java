@@ -56,13 +56,13 @@ public class LogViewController {
   public ResponseEntity<List<String>> searchLogs(
       @PathVariable("file") String fileName,
       @RequestParam("q") String queryString,
-      @RequestParam(required = false, value = "size") String size)
+      @RequestParam(required = false, value = "limit") String limit)
       throws IOException {
     String path = "/var/log/" + fileName; 
     
     // Validity checks
     File file = new File(path);
-    String errorMessage = isValidSearchRequest(file, size);
+    String errorMessage = isValidSearchRequest(file, limit);
     // Should be a custom error class in the future
     if (errorMessage != null) {
       logger.error(errorMessage);
@@ -70,7 +70,7 @@ public class LogViewController {
     }
        
     logger.info("All validations passed. Starting to fetch logs from file {}.", fileName);
-    List<String> logs = logViewService.getLogs(file, queryString, size);
+    List<String> logs = logViewService.getLogs(file, queryString, limit);
 
     return ResponseEntity.ok().body(logs);
   }

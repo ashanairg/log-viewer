@@ -102,18 +102,18 @@ public class LogViewService {
    *
    * @param file, the file wherein to search
    * @param searchToken
-   * @param size
+   * @param limit
    * @return logs with matching token
    * @throws IOException
    */
-  public List<String> getLogs(File file, String searchToken, String size) throws IOException {
+  public List<String> getLogs(File file, String searchToken, String limit) throws IOException {
     List<String> logs = new ArrayList<>();
     
     // TODO: this should either be page length or n result once pagination is implemented in search.
     // Otherwise, performance will suffer.
     int numberOfLines = Integer.MIN_VALUE;
-    if (size != null) {
-      numberOfLines = Integer.parseInt(size);
+    if (limit != null) {
+      numberOfLines = Integer.parseInt(limit);
     }
     ProcessBuilder builder = new ProcessBuilder("grep", "-rni", searchToken, file.getAbsolutePath());
 
@@ -121,19 +121,22 @@ public class LogViewService {
     Process p = builder.start();
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
     String line = null;
-    
-    // If the number of lines are not specified, keep reading till we run out of results
-    while (numberOfLines != Integer.MIN_VALUE ? numberOfLines > 0 : true) {
+
+    while (true) {
       line = r.readLine();
       if (line == null) {
         break;
       }
 
       logs.add(line);
-      numberOfLines--;
     }
     
     Collections.reverse(logs);
+    
+    if (numberOfLines > 0) {
+      return logs.subList(0, numberOfLines);
+    }
+  
     return logs;
   }
 
